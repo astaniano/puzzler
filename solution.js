@@ -29,13 +29,13 @@ function getIdsFromRow(currentPuzz, currentPuzzEdgeObj) {
     const nextPuzzIndex =
       structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
     const nextPuzz = structsOfMatchedPuzzles[nextPuzzIndex].puzzleRef;
-    const nextPuzzleEdgeObj =
+    const nextPuzzleEdge =
       structsOfMatchedPuzzles[nextPuzzIndex].matchedEdge;
 
     res.push(nextPuzz.id);
 
     currentPuzz = nextPuzz;
-    const currentPuzzMatchedEdge = findEdgeToTheRight(nextPuzzleEdgeObj);
+    const currentPuzzMatchedEdge = findEdgeToTheRight(nextPuzzleEdge);
     currentPuzzEdgeObj = currentPuzz.edges[currentPuzzMatchedEdge];
   }
 
@@ -43,18 +43,70 @@ function getIdsFromRow(currentPuzz, currentPuzzEdgeObj) {
 }
 
 function findRes(firstPuzzInArr) {
-  let res = [1];
+  let res = [];
 
-  let firstPuzzleInTheRow = firstPuzzInArr;
-  let currentPuzzMatchedEdge = "right";
-  let currentPuzzRightEdgeObj = firstPuzzleInTheRow.edges[currentPuzzMatchedEdge];
+  let currentPuzz = firstPuzzInArr;
+  let currentPuzzRightEdgeObj = currentPuzz.edges["right"];
+  res.push(currentPuzz.id);
 
-  const idsFromRow = getIdsFromRow(firstPuzzInArr, currentPuzzRightEdgeObj);
+  let idsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj);
   res = res.concat(idsFromRow);
 
-  firstPuzzleInTheRow = firstPuzzleInTheRow.edges["bottom"];
 
-  console.log(res);
+
+  let structsOfMatchedPuzzles = map.get(currentPuzz.edges["bottom"].edgeTypeId);
+  let nextPuzzIndex =
+      structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
+  let nextPuzz = structsOfMatchedPuzzles[nextPuzzIndex].puzzleRef;
+  let nextPuzzleEdge =
+      structsOfMatchedPuzzles[nextPuzzIndex].matchedEdge;
+  let idOfEdgeInNextPuzzle = nextPuzz.edges[nextPuzzleEdge].edgeTypeId;
+  
+  turnLeftMostPuzzle(nextPuzz.edges, idOfEdgeInNextPuzzle);
+  currentPuzz = nextPuzz;
+  currentPuzzRightEdgeObj = currentPuzz.edges["right"];
+  res.push(currentPuzz.id);
+
+  idsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj);
+  res = res.concat(idsFromRow);
+
+
+
+  structsOfMatchedPuzzles = map.get(currentPuzz.edges["bottom"].edgeTypeId);
+  nextPuzzIndex =
+      structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
+  nextPuzz = structsOfMatchedPuzzles[nextPuzzIndex].puzzleRef;
+  nextPuzzleEdge =
+      structsOfMatchedPuzzles[nextPuzzIndex].matchedEdge;
+  idOfEdgeInNextPuzzle = nextPuzz.edges[nextPuzzleEdge].edgeTypeId;
+  
+  turnLeftMostPuzzle(nextPuzz.edges, idOfEdgeInNextPuzzle);
+  currentPuzz = nextPuzz;
+  currentPuzzRightEdgeObj = currentPuzz.edges["right"];
+  res.push(currentPuzz.id);
+
+  idsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj);
+  res = res.concat(idsFromRow);
+
+
+  
+  return res;
+}
+
+function turnLeftMostPuzzle(puzzleEdges, idOfEdgeThatMustBeOnTop) {
+  const maxNumberOfTurns = 3;
+  for (let i = 0; i < maxNumberOfTurns; i++) {
+    if (puzzleEdges.top?.edgeTypeId === idOfEdgeThatMustBeOnTop) {
+      break;
+    }
+
+    // turn puzzle left
+    const topBeforeTurn = puzzleEdges.top;
+    puzzleEdges.top = puzzleEdges.right;
+    puzzleEdges.right = puzzleEdges.bottom;
+    puzzleEdges.bottom = puzzleEdges.left;
+    puzzleEdges.left = topBeforeTurn;
+  }
 }
 
 function turnFirstPuzzle(puzzleEdges) {
@@ -106,7 +158,7 @@ function solvePuzzle(inputArr) {
     }
   });
 
-  findRes(firstPuzzle);
+  return findRes(firstPuzzle);
 }
 
 const inputArr = [
@@ -193,5 +245,4 @@ const inputArr = [
   },
 ];
 
-solvePuzzle(inputArr);
-// console.log(solvePuzzle(inputArr));
+console.log(solvePuzzle(inputArr));
