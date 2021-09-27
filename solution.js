@@ -1,8 +1,5 @@
 // todo typeArrays; validation
 
-// key: edgeTypeId; value: Array<Struct>
-const map = new Map();
-
 function findEdgeToTheRight(matchedEdge) {
   const goToRightPuzzleFrom = {
     right: "left",
@@ -14,7 +11,7 @@ function findEdgeToTheRight(matchedEdge) {
   return goToRightPuzzleFrom[matchedEdge];
 }
 
-function getIdsFromRow(currentPuzz, currentPuzzEdgeObj) {
+function getIdsFromRow(currentPuzz, currentPuzzEdgeObj, map) {
   const res = [];
 
   // currentPuzzEdgeObj equals null when the row is travered
@@ -37,22 +34,87 @@ function getIdsFromRow(currentPuzz, currentPuzzEdgeObj) {
   return res;
 }
 
+function isFirstPuzzleTurnedCorrectly(puzzleEdges) {
+  return puzzleEdges.top === null && puzzleEdges.left === null;
+}
+
+function isLeftMostPuzzleTurnedCorrectly(puzzleEdges, idOfEdgeThatMustBeOnTop) {
+  return puzzleEdges.top?.edgeTypeId === idOfEdgeThatMustBeOnTop;
+}
+
+function turnPuzzle(isPuzzleTurnedCorrectlyCB, puzzleEdges, idOfEdgeThatMustBeOnTop) {
+  const maxNumberOfTurns = 3;
+  for (let i = 0; i < maxNumberOfTurns; i++) {
+    if (isPuzzleTurnedCorrectlyCB(puzzleEdges, idOfEdgeThatMustBeOnTop)) {
+      break;
+    }
+
+    // turn puzzle left
+    const topBeforeTurn = puzzleEdges.top;
+    puzzleEdges.top = puzzleEdges.right;
+    puzzleEdges.right = puzzleEdges.bottom;
+    puzzleEdges.bottom = puzzleEdges.left;
+    puzzleEdges.left = topBeforeTurn;
+  }
+}
+
 /* [
     {puzzleRef: {}, matchedEdge: "left"},
     {puzzleRef: {}, matchedEdge: "bottom"}
 ] */
 
-function findRes(firstPuzzInArr) {
+
+/*
+    {puzzleRef: {}, matchedEdge: "bottom"}
+*/
+function Struct(puzzleRef, matchedEdge) {
+  this.puzzleRef = puzzleRef;
+  this.matchedEdge = matchedEdge;
+}
+
+function validate(inputArr) {
+  if (inputArr.length === 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function createMatchingEdgesMap(inputArr) {
+  // key: edgeTypeId; value: Array<Struct>
+  const map = new Map();
+
+  inputArr.forEach((puzzle) => {
+    for (const side in puzzle.edges) {
+      const edge = puzzle.edges[side];
+  
+      if (edge !== null) {
+        const arrOfStructs = map.get(edge.edgeTypeId);
+        const struct = new Struct(puzzle, side);
+  
+        if (arrOfStructs === undefined) {
+          map.set(edge.edgeTypeId, [struct]);
+        } else {
+          arrOfStructs.push(struct);
+        }
+      }
+    }
+  });
+
+  return map;
+}
+
+function findRes(firstPuzzInArr, map) {
   let res = [];
 
   let currentPuzz = firstPuzzInArr;
   res.push(currentPuzz.id);
   let currentPuzzRightEdgeObj = currentPuzz.edges["right"];
-  let idsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj);
-  res = res.concat(idsFromRow);
+  let puzzleIdsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj, map);
+  res = res.concat(puzzleIdsFromRow);
   let currentPuzzBottomEdge = currentPuzz.edges["bottom"];
 
-  // currentPuzzBottomEdge equals null when all the rows have been traversed
+  // currentPuzzBottomEdge === null when all the rows have been traversed
   while (currentPuzzBottomEdge !== null) {
     const structsOfMatchedPuzzles = map.get(currentPuzzBottomEdge.edgeTypeId);
     const nextPuzzIndex =
@@ -62,85 +124,32 @@ function findRes(firstPuzzInArr) {
         structsOfMatchedPuzzles[nextPuzzIndex].matchedEdge;
     const idOfEdgeInNextPuzzle = nextPuzz.edges[nextPuzzleMatchedEdge].edgeTypeId;
     
-    turnLeftMostPuzzle(nextPuzz.edges, idOfEdgeInNextPuzzle);
+    turnPuzzle(isLeftMostPuzzleTurnedCorrectly, nextPuzz.edges, idOfEdgeInNextPuzzle);
+    
     currentPuzz = nextPuzz;
     res.push(currentPuzz.id);
     currentPuzzRightEdgeObj = currentPuzz.edges["right"];
 
-    idsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj);
-    res = res.concat(idsFromRow);
+    puzzleIdsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj, map);
+    res = res.concat(puzzleIdsFromRow);
     currentPuzzBottomEdge = currentPuzz.edges["bottom"];
   }
   
   return res;
 }
 
-function turnLeftMostPuzzle(puzzleEdges, idOfEdgeThatMustBeOnTop) {
-  const maxNumberOfTurns = 3;
-  for (let i = 0; i < maxNumberOfTurns; i++) {
-    if (puzzleEdges.top?.edgeTypeId === idOfEdgeThatMustBeOnTop) {
-      break;
-    }
-
-    // turn puzzle left
-    const topBeforeTurn = puzzleEdges.top;
-    puzzleEdges.top = puzzleEdges.right;
-    puzzleEdges.right = puzzleEdges.bottom;
-    puzzleEdges.bottom = puzzleEdges.left;
-    puzzleEdges.left = topBeforeTurn;
-  }
-}
-
-function turnFirstPuzzle(puzzleEdges) {
-  const maxNumberOfTurns = 3;
-  for (let i = 0; i < maxNumberOfTurns; i++) {
-    if (puzzleEdges.top === null && puzzleEdges.left === null) {
-      break;
-    }
-
-    // turn puzzle left
-    const topBeforeTurn = puzzleEdges.top;
-    puzzleEdges.top = puzzleEdges.right;
-    puzzleEdges.right = puzzleEdges.bottom;
-    puzzleEdges.bottom = puzzleEdges.left;
-    puzzleEdges.left = topBeforeTurn;
-  }
-}
-
 function solvePuzzle(inputArr) {
-  if (inputArr.length === 0) {
-    return;
-  }
-
-  function Struct(puzzleRef, matchedEdge) {
-    this.puzzleRef = puzzleRef;
-    this.matchedEdge = matchedEdge;
+  if (!validate(inputArr)) {
+    return [];
   }
 
   const firstPuzzle = inputArr[0];
-  turnFirstPuzzle(firstPuzzle.edges);
+  turnPuzzle(isFirstPuzzleTurnedCorrectly, firstPuzzle.edges, null);
 
-  inputArr.forEach((puzzle) => {
-    for (const side in puzzle.edges) {
-      const edge = puzzle.edges[side];
+  // key: edgeTypeId; value: Array<Struct>
+  const map = createMatchingEdgesMap([...inputArr]);
 
-      if (edge !== null) {
-        const foundArr = map.get(edge.edgeTypeId);
-
-        if (foundArr !== undefined) {
-          const obj = new Struct(puzzle, side);
-          foundArr.push(obj);
-        } else {
-          const arr = [];
-          const obj = new Struct(puzzle, side);
-          arr.push(obj);
-          map.set(edge.edgeTypeId, arr);
-        }
-      }
-    }
-  });
-
-  return findRes(firstPuzzle);
+  return findRes(firstPuzzle, map);
 }
 
 const inputArr = [
@@ -227,4 +236,14 @@ const inputArr = [
   },
 ];
 
-console.log(solvePuzzle(inputArr));
+const res = solvePuzzle(inputArr);
+console.log(res);
+
+const correctRes = [1, 4, 2, 9, 6, 7, 8, 3, 5];
+let correct = true;
+correctRes.forEach((el, i) => {
+  if (el !== res[i]) {
+    correct = false;
+  }
+})
+console.log(correct);
