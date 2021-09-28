@@ -1,4 +1,29 @@
-// todo typeArrays; validation
+/*
+  The algorithm works as follows:
+
+  First we iterate over array of puzzles and we search for all the matches of edgeId. 
+  For that purpose we create a map where key is the edgeId which can be found on both edges in both puzzles; And the value of map is an array of Struct (Struct is a random name, because I could not think of a better name). Struct has the following structure: {puzzleRef: {}, matchedEdge: "bottom"} where puzzleRef is a reference to the puzzle itself, and matchedEdge is the edge of the puzzle that matched the next puzzle edge.
+
+  So an example of map:
+  key: 3, (id of edge that is present in both puzzles)
+  value: [
+    {puzzleRef: {}, matchedEdge: "left"}, (matchedEdge tells that the "left" edge has an id: 3)
+    {puzzleRef: {}, matchedEdge: "bottom"} (matchedEdge tells that the "bottom" edge has an id: 3)
+  ]
+  And so two different puzzles can be connected by that common edge id which is the key in the map.
+
+  Then we will turn only left most puzzles in right direction and based on their right edge will traverse through the row. I understand that this task can be completed without turning puzzles but for the sake of readability we will turn firstPuzzle and leftMostPuzzles.
+  When we traverse through the row from left to right we do not turn puzzles. The next puzzle to the right is found thanks to the "findEdgeToTheRight" function.
+*/
+
+/*
+  user for 
+
+  returns true if the first 
+*/
+const isFirstPuzzleTurned = (puzzleEdges) => puzzleEdges.top === null && puzzleEdges.left === null;
+
+const isLeftMostPuzzleTurned = (puzzleEdges, idOfEdgeThatMustBeOnTop) => puzzleEdges.top?.edgeTypeId === idOfEdgeThatMustBeOnTop;
 
 function findEdgeToTheRight(matchedEdge) {
   const goToRightPuzzleFrom = {
@@ -9,37 +34,6 @@ function findEdgeToTheRight(matchedEdge) {
   };
 
   return goToRightPuzzleFrom[matchedEdge];
-}
-
-function getIdsFromRow(currentPuzz, currentPuzzEdgeObj, map) {
-  const res = [];
-
-  // currentPuzzEdgeObj equals null when the row is travered
-  while (currentPuzzEdgeObj !== null) {
-    const structsOfMatchedPuzzles = map.get(currentPuzzEdgeObj.edgeTypeId);
-
-    const nextPuzzIndex =
-      structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
-    const nextPuzz = structsOfMatchedPuzzles[nextPuzzIndex].puzzleRef;
-    const nextPuzzleEdge =
-      structsOfMatchedPuzzles[nextPuzzIndex].matchedEdge;
-
-    res.push(nextPuzz.id);
-
-    currentPuzz = nextPuzz;
-    const currentPuzzMatchedEdge = findEdgeToTheRight(nextPuzzleEdge);
-    currentPuzzEdgeObj = currentPuzz.edges[currentPuzzMatchedEdge];
-  }
-
-  return res;
-}
-
-function isFirstPuzzleTurnedCorrectly(puzzleEdges) {
-  return puzzleEdges.top === null && puzzleEdges.left === null;
-}
-
-function isLeftMostPuzzleTurnedCorrectly(puzzleEdges, idOfEdgeThatMustBeOnTop) {
-  return puzzleEdges.top?.edgeTypeId === idOfEdgeThatMustBeOnTop;
 }
 
 function turnPuzzle(isPuzzleTurnedCorrectlyCB, puzzleEdges, idOfEdgeThatMustBeOnTop) {
@@ -58,11 +52,27 @@ function turnPuzzle(isPuzzleTurnedCorrectlyCB, puzzleEdges, idOfEdgeThatMustBeOn
   }
 }
 
-/* [
-    {puzzleRef: {}, matchedEdge: "left"},
-    {puzzleRef: {}, matchedEdge: "bottom"}
-] */
+function getIdsFromRow(currentPuzz, currentPuzzEdgeObj, map) {
+  const res = [];
 
+  // currentPuzzEdgeObj equals null when the row is travered
+  while (currentPuzzEdgeObj !== null) {
+    const structsOfMatchedPuzzles = map.get(currentPuzzEdgeObj.edgeTypeId);
+
+    const rightPuzzIndex =
+      structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
+    const rightPuzz = structsOfMatchedPuzzles[rightPuzzIndex].puzzleRef;
+    const rightPuzzleEdge = structsOfMatchedPuzzles[rightPuzzIndex].matchedEdge;
+
+    res.push(rightPuzz.id);
+
+    currentPuzz = rightPuzz;
+    const currentPuzzMatchedEdge = findEdgeToTheRight(rightPuzzleEdge);
+    currentPuzzEdgeObj = currentPuzz.edges[currentPuzzMatchedEdge];
+  }
+
+  return res;
+}
 
 /*
     {puzzleRef: {}, matchedEdge: "bottom"}
@@ -81,7 +91,11 @@ function validate(inputArr) {
 }
 
 function createMatchingEdgesMap(inputArr) {
-  // key: edgeTypeId; value: Array<Struct>
+  /* key: edgeTypeId; value: Array<Struct>; for example:
+  [
+    {puzzleRef: {}, matchedEdge: "left"},
+    {puzzleRef: {}, matchedEdge: "bottom"}
+  ] */
   const map = new Map();
 
   inputArr.forEach((puzzle) => {
@@ -104,35 +118,31 @@ function createMatchingEdgesMap(inputArr) {
   return map;
 }
 
-function findRes(firstPuzzInArr, map) {
+function getIdsOfPuzzles(firstPuzzInArr, map) {
   let res = [];
-
   let currentPuzz = firstPuzzInArr;
-  res.push(currentPuzz.id);
-  let currentPuzzRightEdgeObj = currentPuzz.edges["right"];
-  let puzzleIdsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj, map);
-  res = res.concat(puzzleIdsFromRow);
-  let currentPuzzBottomEdge = currentPuzz.edges["bottom"];
 
-  // currentPuzzBottomEdge === null when all the rows have been traversed
-  while (currentPuzzBottomEdge !== null) {
-    const structsOfMatchedPuzzles = map.get(currentPuzzBottomEdge.edgeTypeId);
-    const nextPuzzIndex =
-        structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
-    const nextPuzz = structsOfMatchedPuzzles[nextPuzzIndex].puzzleRef;
-    const nextPuzzleMatchedEdge =
-        structsOfMatchedPuzzles[nextPuzzIndex].matchedEdge;
-    const idOfEdgeInNextPuzzle = nextPuzz.edges[nextPuzzleMatchedEdge].edgeTypeId;
-    
-    turnPuzzle(isLeftMostPuzzleTurnedCorrectly, nextPuzz.edges, idOfEdgeInNextPuzzle);
-    
-    currentPuzz = nextPuzz;
+  while (true) {
     res.push(currentPuzz.id);
-    currentPuzzRightEdgeObj = currentPuzz.edges["right"];
-
-    puzzleIdsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj, map);
+    const currentPuzzRightEdgeObj = currentPuzz.edges["right"];
+    const puzzleIdsFromRow = getIdsFromRow(currentPuzz, currentPuzzRightEdgeObj, map);
     res = res.concat(puzzleIdsFromRow);
-    currentPuzzBottomEdge = currentPuzz.edges["bottom"];
+    const currentPuzzBottomEdge = currentPuzz.edges["bottom"];
+
+    // currentPuzzBottomEdge === null when all the rows have been traversed
+    if (currentPuzzBottomEdge === null) {
+      break;
+    }
+
+    const structsOfMatchedPuzzles = map.get(currentPuzzBottomEdge.edgeTypeId);
+    const belowPuzzIndex =
+        structsOfMatchedPuzzles[0].puzzleRef.id === currentPuzz.id ? 1 : 0;
+    const belowPuzz = structsOfMatchedPuzzles[belowPuzzIndex].puzzleRef;
+    const belowPuzzMatchedEdge = structsOfMatchedPuzzles[belowPuzzIndex].matchedEdge;
+    const idOfEdgeInBelowPuzz = belowPuzz.edges[belowPuzzMatchedEdge].edgeTypeId;
+    
+    turnPuzzle(isLeftMostPuzzleTurned, belowPuzz.edges, idOfEdgeInBelowPuzz);
+    currentPuzz = belowPuzz;
   }
   
   return res;
@@ -144,12 +154,12 @@ function solvePuzzle(inputArr) {
   }
 
   const firstPuzzle = inputArr[0];
-  turnPuzzle(isFirstPuzzleTurnedCorrectly, firstPuzzle.edges, null);
+  turnPuzzle(isFirstPuzzleTurned, firstPuzzle.edges, null);
 
   // key: edgeTypeId; value: Array<Struct>
-  const map = createMatchingEdgesMap([...inputArr]);
+  const map = createMatchingEdgesMap(inputArr);
 
-  return findRes(firstPuzzle, map);
+  return getIdsOfPuzzles(firstPuzzle, map);
 }
 
 const inputArr = [
